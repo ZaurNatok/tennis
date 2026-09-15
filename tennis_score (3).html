@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Теннис-счёт">
+<title>Теннис — счёт матча</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --clay: #A6432B;
+    --clay-dark: #8A3720;
+    --grass: #1F4732;
+    --grass-dark: #17392A;
+    --gold: #D9A441;
+    --charcoal: #17140F;
+    --charcoal-raised: #221E17;
+    --cream: #F3E9D8;
+    --line: rgba(243,233,216,0.18);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--charcoal);
+    font-family: 'Inter', sans-serif;
+    color: var(--cream);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #app {
+    height: 100%;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ---------------- Setup screen ---------------- */
+  #setup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 28px 26px;
+    gap: 26px;
+  }
+
+  #setup h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 0.02em;
+    margin: 0 0 4px;
+    color: var(--gold);
+  }
+
+  #setup .lead {
+    font-size: 14px;
+    color: rgba(243,233,216,0.65);
+    margin: 0 0 8px;
+    line-height: 1.5;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(243,233,216,0.55);
+    margin-bottom: 8px;
+  }
+
+  .field input[type="text"] {
+    width: 100%;
+    background: var(--charcoal-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 17px;
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+    outline: none;
+  }
+  .field input[type="text"]:focus { border-color: var(--gold); }
+
+  .segmented {
+    display: flex;
+    gap: 8px;
+  }
+
+  .segmented button {
+    flex: 1;
+    padding: 13px 0;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--charcoal-raised);
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .segmented button.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--charcoal);
+  }
+
+  #startBtn {
+    margin-top: 6px;
+    padding: 17px 0;
+    border-radius: 12px;
+    border: none;
+    background: var(--gold);
+    color: var(--charcoal);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+  }
+  #startBtn:active { opacity: 0.85; }
+
+  /* ---------------- Top bar (match view) ---------------- */
+  #topbar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--charcoal);
+    gap: 8px;
+    z-index: 5;
+  }
+
+  #topbar .sets {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.03em;
+    color: rgba(243,233,216,0.85);
+  }
+
+  #topbar .iconbar { display: flex; gap: 6px; }
+
+  #topbar button {
+    background: var(--charcoal-raised);
+    border: 1px solid var(--line);
+    color: var(--cream);
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #topbar button:active { opacity: 0.7; }
+  #topbar button.muted-on { color: var(--gold); border-color: var(--gold); }
+
+  /* ---------------- Court / player zones ---------------- */
+  #court {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    touch-action: manipulation;
+    transition: filter 0.15s ease;
+  }
+  .zone:active { filter: brightness(1.12); }
+
+  .zone.p1 { background: var(--clay); border-bottom: 3px solid var(--charcoal); }
+  .zone.p2 { background: var(--grass); }
+
+  .zone .edit {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: rgba(23,20,15,0.35);
+    border: none;
+    color: var(--cream);
+    font-size: 13px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .zone .name {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin-bottom: 6px;
+    opacity: 0.92;
+  }
+
+  .zone .points {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 22vw, 128px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+
+  .zone .points.advantage { color: var(--gold); }
+
+  .zone .games {
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(243,233,216,0.8);
+    display: flex;
+    gap: 6px;
+  }
+
+  .zone .setsHistory {
+    margin-top: 4px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: rgba(243,233,216,0.55);
+  }
+
+  .zone .tiebreak-tag {
+    margin-top: 8px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: rgba(23,20,15,0.35);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .clicker {
+    margin-top: 18px;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    border: 3px solid rgba(243,233,216,0.55);
+    background: rgba(23,20,15,0.28);
+    color: var(--cream);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+
+  .clicker:active {
+    transform: scale(0.9);
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--charcoal);
+  }
+
+  /* ---------------- Match over overlay ---------------- */
+  #matchOver {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(23,20,15,0.92);
+    z-index: 20;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #matchOver .trophy { font-size: 46px; margin-bottom: 14px; }
+
+  #matchOver h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px;
+    color: var(--gold);
+    margin: 0 0 6px;
+  }
+
+  #matchOver p {
+    color: rgba(243,233,216,0.7);
+    font-size: 14px;
+    margin: 0 0 26px;
+  }
+
+  #matchOver button {
+    padding: 15px 30px;
+    border-radius: 12px;
+    border: none;
+    background: var(--gold);
+    color: var(--charcoal);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 19px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ---------------- Clicker binding overlay ---------------- */
+  #bindOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(23,20,15,0.95);
+    z-index: 30;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #bindOverlay .stepTag {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  #bindOverlay h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    margin: 0 0 10px;
+    max-width: 300px;
+  }
+
+  #bindOverlay p {
+    font-size: 13px;
+    color: rgba(243,233,216,0.6);
+    max-width: 280px;
+    line-height: 1.5;
+    margin: 0 0 30px;
+  }
+
+  #bindOverlay .captured {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--gold);
+    min-height: 28px;
+    margin-bottom: 24px;
+  }
+
+  #bindOverlay .row { display: flex; gap: 10px; }
+
+  #bindOverlay button.action {
+    padding: 13px 22px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--charcoal-raised);
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .setupBtn.secondary {
+    padding: 15px 0;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--charcoal-raised);
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .bindBadge {
+    font-size: 11px;
+    color: rgba(243,233,216,0.55);
+    margin-top: -14px;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ---------- Setup screen ---------- -->
+  <div id="setup">
+    <div>
+      <h1>Счёт матча</h1>
+      <p class="lead">Тап по игроку — очко. Счёт объявляется голосом. Формат матча и имена можно изменить позже кнопкой «Новый матч».</p>
+    </div>
+
+    <div class="field">
+      <label>Игрок 1 (верх)</label>
+      <input type="text" id="nameP1" value="Игрок 1" maxlength="20">
+    </div>
+    <div class="field">
+      <label>Игрок 2 (низ)</label>
+      <input type="text" id="nameP2" value="Игрок 2" maxlength="20">
+    </div>
+
+    <div class="field">
+      <label>Формат матча</label>
+      <div class="segmented" id="formatChoice">
+        <button data-format="1">1 сет</button>
+        <button data-format="3" class="active">До 2 из 3</button>
+        <button data-format="5">До 3 из 5</button>
+      </div>
+    </div>
+
+    <button id="startBtn">Начать матч</button>
+
+    <button id="setupClickersBtn" class="setupBtn secondary" type="button">🎮 Настроить Bluetooth-кликеры</button>
+    <div class="bindBadge" id="bindStatus">Кликеры не настроены (необязательно)</div>
+  </div>
+
+  <!-- ---------- Top bar ---------- -->
+  <div id="topbar">
+    <div class="sets" id="setsLabel">Сеты 0:0</div>
+    <div class="iconbar">
+      <button id="undoBtn">Отменить</button>
+      <button id="clickersBtnTop">🎮</button>
+      <button id="muteBtn">🔊</button>
+      <button id="resetBtn">Новый матч</button>
+    </div>
+  </div>
+
+  <!-- ---------- Court ---------- -->
+  <div id="court">
+    <div class="zone p1" id="zoneP1">
+      <button class="edit" id="editP1">✎ имя</button>
+      <div class="name" id="labelP1">Игрок 1</div>
+      <div class="points" id="pointsP1">0</div>
+      <div class="games" id="gamesP1"></div>
+      <div class="setsHistory" id="setsHistP1"></div>
+      <div class="tiebreak-tag" id="tieTagP1" style="display:none;">Тай-брейк</div>
+      <button class="clicker" id="clickerP1">ОЧКО</button>
+    </div>
+    <div class="zone p2" id="zoneP2">
+      <button class="edit" id="editP2">✎ имя</button>
+      <div class="name" id="labelP2">Игрок 2</div>
+      <div class="points" id="pointsP2">0</div>
+      <div class="games" id="gamesP2"></div>
+      <div class="setsHistory" id="setsHistP2"></div>
+      <div class="tiebreak-tag" id="tieTagP2" style="display:none;">Тай-брейк</div>
+      <button class="clicker" id="clickerP2">ОЧКО</button>
+    </div>
+  </div>
+
+  <!-- ---------- Match over ---------- -->
+  <div id="matchOver">
+    <div class="trophy">🏆</div>
+    <h2 id="winnerText">Победа!</h2>
+    <p id="finalScoreText"></p>
+    <button id="newMatchBtn">Новый матч</button>
+  </div>
+
+  <!-- ---------- Clicker binding overlay ---------- -->
+  <div id="bindOverlay">
+    <div class="stepTag" id="bindStepTag">Шаг 1 из 3</div>
+    <h2 id="bindTitle">Нажмите кнопку кликера для игрока 1</h2>
+    <p id="bindHint">Кликер должен быть уже подключён в Настройках iPhone → Bluetooth. Нажмите на нём кнопку, которой хотите начислять очко этому игроку.</p>
+    <div class="captured" id="bindCaptured"></div>
+    <div class="row">
+      <button class="action" id="bindSkip">Пропустить шаг</button>
+      <button class="action" id="bindCancel">Закрыть</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------------- State ----------------
+  let names = ["Игрок 1", "Игрок 2"];
+  let matchFormat = 3; // 1, 3, or 5
+  let points = [0, 0];
+  let games = [0, 0];
+  let setsWon = [0, 0];
+  let completedSets = []; // array of "6-4" style strings, in games[0]-games[1] order
+  let tiebreakActive = false;
+  let tiebreak = [0, 0];
+  let muted = false;
+  let history = []; // snapshots for undo
+  let matchOver = false;
+
+  const POINT_WORDS = { 0: "ноль", 1: "пятнадцать", 2: "тридцать", 3: "сорок" };
+
+  // ---------------- Voice ----------------
+  let ruVoice = null;
+  function pickVoice() {
+    const voices = speechSynthesis.getVoices();
+    ruVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ru")) || null;
+  }
+  if ("speechSynthesis" in window) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  function speak(text) {
+    if (muted || !("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ru-RU";
+    if (ruVoice) u.voice = ruVoice;
+    u.rate = 0.98;
+    speechSynthesis.speak(u);
+  }
+
+  function vibrate() {
+    if (navigator.vibrate) navigator.vibrate(12);
+  }
+
+  // ---------------- Snapshot / undo ----------------
+  function snapshot() {
+    history.push(JSON.stringify({ points, games, setsWon, completedSets, tiebreakActive, tiebreak, matchOver }));
+    if (history.length > 100) history.shift();
+  }
+
+  function undo() {
+    if (history.length === 0) return;
+    const s = JSON.parse(history.pop());
+    points = s.points; games = s.games; setsWon = s.setsWon;
+    completedSets = s.completedSets; tiebreakActive = s.tiebreakActive;
+    tiebreak = s.tiebreak; matchOver = s.matchOver;
+    document.getElementById("matchOver").style.display = matchOver ? "flex" : "none";
+    render();
+    saveState();
+  }
+
+  // ---------------- Scoring ----------------
+  function addPoint(i) {
+    if (matchOver) return;
+    snapshot();
+    vibrate();
+    const other = i === 0 ? 1 : 0;
+
+    if (tiebreakActive) {
+      tiebreak[i]++;
+      if (tiebreak[i] >= 7 && tiebreak[i] - tiebreak[other] >= 2) {
+        games[i] = 7;
+        tiebreakActive = false;
+        tiebreak = [0, 0];
+        finishSet(i);
+      } else {
+        speak(`Тай-брейк, ${tiebreak[0]} - ${tiebreak[1]}`);
+      }
+      render();
+      saveState();
+      return;
+    }
+
+    points[i]++;
+    if (points[i] >= 4 && points[i] - points[other] >= 2) {
+      games[i]++;
+      points = [0, 0];
+      speak(`Гейм, ${names[i]}!`);
+      const setWon = checkSetWin(i);
+      if (!setWon) {
+        speak(`Счёт по геймам ${games[0]} - ${games[1]}`);
+      }
+    } else {
+      announceCurrentPoint(i, other);
+    }
+    render();
+    saveState();
+  }
+
+  function announceCurrentPoint(i, other) {
+    if (points[0] >= 3 && points[1] >= 3) {
+      if (points[0] === points[1]) {
+        speak("Ровно");
+      } else if (points[i] > points[other]) {
+        speak(`Преимущество, ${names[i]}`);
+      } else {
+        speak(`Преимущество, ${names[other]}`);
+      }
+    } else {
+      speak(`${POINT_WORDS[points[0]]} - ${POINT_WORDS[points[1]]}`);
+    }
+  }
+
+  function checkSetWin(i) {
+    const other = i === 0 ? 1 : 0;
+    if (games[i] >= 6 && games[i] - games[other] >= 2) {
+      finishSet(i);
+      return true;
+    }
+    if (games[0] === 6 && games[1] === 6) {
+      tiebreakActive = true;
+      tiebreak = [0, 0];
+      speak("Счёт по геймам 6 - 6. Тай-брейк!");
+      return false;
+    }
+    return false;
+  }
+
+  function finishSet(i) {
+    completedSets.push(`${games[0]}-${games[1]}`);
+    setsWon[i]++;
+    games = [0, 0];
+    points = [0, 0];
+
+    const neededSets = Math.ceil(matchFormat / 2);
+    if (setsWon[i] >= neededSets) {
+      matchOver = true;
+      speak(`Матч! Победу одержал ${names[i]}! Поздравляем!`);
+      showMatchOver(i);
+    } else {
+      speak(`Сет, ${names[i]}! Счёт по сетам ${setsWon[0]} - ${setsWon[1]}`);
+    }
+  }
+
+  function showMatchOver(winnerIdx) {
+    document.getElementById("winnerText").textContent = `Победил ${names[winnerIdx]}!`;
+    document.getElementById("finalScoreText").textContent =
+      "Счёт по сетам: " + completedSets.join(", ");
+    document.getElementById("matchOver").style.display = "flex";
+    clearState();
+  }
+
+  // ---------------- Render ----------------
+  function render() {
+    document.getElementById("labelP1").textContent = names[0];
+    document.getElementById("labelP2").textContent = names[1];
+
+    const p1el = document.getElementById("pointsP1");
+    const p2el = document.getElementById("pointsP2");
+
+    if (tiebreakActive) {
+      p1el.textContent = tiebreak[0];
+      p2el.textContent = tiebreak[1];
+    } else {
+      p1el.textContent = pointLabel(0);
+      p2el.textContent = pointLabel(1);
+    }
+
+    p1el.classList.toggle("advantage", !tiebreakActive && isAdvantage(0));
+    p2el.classList.toggle("advantage", !tiebreakActive && isAdvantage(1));
+
+    document.getElementById("gamesP1").textContent = `Геймы: ${games[0]}`;
+    document.getElementById("gamesP2").textContent = `Геймы: ${games[1]}`;
+
+    document.getElementById("setsHistP1").textContent = completedSets.length
+      ? "Сеты: " + completedSets.map(s => s.split("-")[0]).join(", ")
+      : "";
+    document.getElementById("setsHistP2").textContent = completedSets.length
+      ? "Сеты: " + completedSets.map(s => s.split("-")[1]).join(", ")
+      : "";
+
+    document.getElementById("tieTagP1").style.display = tiebreakActive ? "inline-block" : "none";
+    document.getElementById("tieTagP2").style.display = tiebreakActive ? "inline-block" : "none";
+
+    document.getElementById("setsLabel").textContent = `Сеты ${setsWon[0]}:${setsWon[1]}`;
+  }
+
+  function pointLabel(i) {
+    const other = i === 0 ? 1 : 0;
+    if (points[0] >= 3 && points[1] >= 3) {
+      if (points[0] === points[1]) return "40";
+      return points[i] > points[other] ? "AD" : "40";
+    }
+    const L = ["0", "15", "30", "40"];
+    return L[points[i]];
+  }
+
+  function isAdvantage(i) {
+    const other = i === 0 ? 1 : 0;
+    return points[0] >= 3 && points[1] >= 3 && points[i] > points[other];
+  }
+
+  // ---------------- Bluetooth clicker (HID keyboard) binding ----------------
+  // Web Bluetooth isn't supported in Safari on iOS, so we can't pair devices
+  // from the page. Instead, the clicker is paired at the OS level (Settings →
+  // Bluetooth) and acts like a keyboard; we just listen for whichever key
+  // codes its buttons send and let the user map them here.
+  let keyBindings = { p1: null, p2: null, undo: null };
+  let bindQueue = [];
+  let bindStepIndex = 0;
+  let awaitingBind = null;
+
+  const BIND_STEPS = [
+    { key: "p1", title: () => `Нажмите кнопку кликера для игрока ${names[0]}` },
+    { key: "p2", title: () => `Нажмите кнопку кликера для игрока ${names[1]}` },
+    { key: "undo", title: () => "Нажмите кнопку кликера для отмены (необязательно)" },
+  ];
+
+  function keyLabel(code) {
+    if (!code) return "—";
+    const map = {
+      ArrowLeft: "◀ Стрелка влево", ArrowRight: "▶ Стрелка вправо",
+      ArrowUp: "▲ Стрелка вверх", ArrowDown: "▼ Стрелка вниз",
+      Space: "Пробел", PageUp: "Page Up", PageDown: "Page Down",
+      Enter: "Enter",
+    };
+    return map[code] || code;
+  }
+
+  function updateBindBadge() {
+    const has = keyBindings.p1 || keyBindings.p2;
+    const text = has
+      ? `Кликеры: Игрок 1 — ${keyLabel(keyBindings.p1)}, Игрок 2 — ${keyLabel(keyBindings.p2)}` +
+        (keyBindings.undo ? `, Отмена — ${keyLabel(keyBindings.undo)}` : "")
+      : "Кликеры не настроены (необязательно)";
+    document.getElementById("bindStatus").textContent = text;
+  }
+
+  function openBindOverlay() {
+    bindStepIndex = 0;
+    document.getElementById("bindOverlay").style.display = "flex";
+    showBindStep();
+  }
+
+  function closeBindOverlay() {
+    awaitingBind = null;
+    document.getElementById("bindOverlay").style.display = "none";
+    updateBindBadge();
+  }
+
+  function showBindStep() {
+    if (bindStepIndex >= BIND_STEPS.length) { closeBindOverlay(); return; }
+    const step = BIND_STEPS[bindStepIndex];
+    awaitingBind = step.key;
+    document.getElementById("bindStepTag").textContent = `Шаг ${bindStepIndex + 1} из ${BIND_STEPS.length}`;
+    document.getElementById("bindTitle").textContent = step.title();
+    document.getElementById("bindCaptured").textContent = "";
+  }
+
+  function handleBindCapture(code) {
+    const step = BIND_STEPS[bindStepIndex];
+    keyBindings[step.key] = code;
+    document.getElementById("bindCaptured").textContent = `Записано: ${keyLabel(code)}`;
+    awaitingBind = null;
+    setTimeout(() => {
+      bindStepIndex++;
+      showBindStep();
+    }, 650);
+  }
+
+  document.getElementById("setupClickersBtn").addEventListener("click", openBindOverlay);
+  document.getElementById("clickersBtnTop").addEventListener("click", openBindOverlay);
+  document.getElementById("bindCancel").addEventListener("click", closeBindOverlay);
+  document.getElementById("bindSkip").addEventListener("click", () => {
+    bindStepIndex++;
+    showBindStep();
+  });
+
+  // Global key listener: captures binding steps, or fires scoring during a match.
+  document.addEventListener("keydown", (e) => {
+    const active = document.activeElement;
+    const isTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+
+    if (awaitingBind) {
+      if (isTyping) return;
+      e.preventDefault();
+      handleBindCapture(e.code || e.key);
+      return;
+    }
+
+    if (isTyping) return;
+
+    const setupVisible = document.getElementById("setup").style.display !== "none";
+    if (setupVisible || matchOver) return;
+
+    if (keyBindings.p1 && e.code === keyBindings.p1) { e.preventDefault(); addPoint(0); }
+    else if (keyBindings.p2 && e.code === keyBindings.p2) { e.preventDefault(); addPoint(1); }
+    else if (keyBindings.undo && e.code === keyBindings.undo) { e.preventDefault(); undo(); }
+  });
+
+  // ---------------- Autosave (survives page reload — needed for the
+  // Apple Watch Shortcuts trick below, since opening a URL reloads the page) ----------------
+  const STORAGE_KEY = "tennisMatchState";
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        names, matchFormat, points, games, setsWon,
+        completedSets, tiebreakActive, tiebreak, matchOver,
+      }));
+    } catch (e) { /* storage unavailable — ignore, app still works, just won't survive reload */ }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+
+  function restoreSavedMatch() {
+    const s = loadState();
+    if (!s || s.matchOver) return false;
+    names = s.names; matchFormat = s.matchFormat;
+    points = s.points; games = s.games; setsWon = s.setsWon;
+    completedSets = s.completedSets; tiebreakActive = s.tiebreakActive;
+    tiebreak = s.tiebreak; matchOver = s.matchOver;
+    history = [];
+
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("topbar").style.display = "flex";
+    document.getElementById("court").style.display = "flex";
+    render();
+    return true;
+  }
+
+  // Apple Watch (via Shortcuts app) can't talk Bluetooth/HID to this page,
+  // but a Shortcut can open a URL like yoursite.html?point=p1 — we read
+  // that on load and score immediately, then strip it from the address bar
+  // so re-opening the tab later doesn't replay the same point.
+  function applyUrlAction() {
+    const params = new URLSearchParams(window.location.search);
+    const point = params.get("point");
+    const doUndo = params.get("undo");
+    if (point === "p1") addPoint(0);
+    else if (point === "p2") addPoint(1);
+    else if (doUndo) undo();
+    if (point || doUndo) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }
+
+  // ---------------- Setup screen wiring ----------------
+  document.querySelectorAll("#formatChoice button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#formatChoice button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      matchFormat = parseInt(btn.dataset.format, 10);
+    });
+  });
+
+  document.getElementById("startBtn").addEventListener("click", () => {
+    const n1 = document.getElementById("nameP1").value.trim();
+    const n2 = document.getElementById("nameP2").value.trim();
+    names = [n1 || "Игрок 1", n2 || "Игрок 2"];
+
+    points = [0, 0]; games = [0, 0]; setsWon = [0, 0];
+    completedSets = []; tiebreakActive = false; tiebreak = [0, 0];
+    history = []; matchOver = false;
+
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("topbar").style.display = "flex";
+    document.getElementById("court").style.display = "flex";
+    document.getElementById("matchOver").style.display = "none";
+
+    render();
+    saveState();
+    speak(`Матч начат. ${names[0]} против ${names[1]}.`);
+  });
+
+  // ---------------- In-match controls ----------------
+  document.getElementById("clickerP1").addEventListener("click", (e) => {
+    e.stopPropagation();
+    addPoint(0);
+  });
+  document.getElementById("clickerP2").addEventListener("click", (e) => {
+    e.stopPropagation();
+    addPoint(1);
+  });
+
+  document.getElementById("editP1").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const v = prompt("Имя игрока 1:", names[0]);
+    if (v && v.trim()) { names[0] = v.trim(); render(); }
+  });
+  document.getElementById("editP2").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const v = prompt("Имя игрока 2:", names[1]);
+    if (v && v.trim()) { names[1] = v.trim(); render(); }
+  });
+
+  document.getElementById("undoBtn").addEventListener("click", undo);
+
+  document.getElementById("muteBtn").addEventListener("click", (e) => {
+    muted = !muted;
+    e.target.textContent = muted ? "🔇" : "🔊";
+    e.target.classList.toggle("muted-on", muted);
+    if (muted) speechSynthesis.cancel();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (!confirm("Начать новый матч? Текущий счёт будет потерян.")) return;
+    clearState();
+    document.getElementById("setup").style.display = "flex";
+    document.getElementById("topbar").style.display = "none";
+    document.getElementById("court").style.display = "none";
+    document.getElementById("matchOver").style.display = "none";
+  });
+
+  document.getElementById("newMatchBtn").addEventListener("click", () => {
+    clearState();
+    document.getElementById("matchOver").style.display = "none";
+    document.getElementById("setup").style.display = "flex";
+    document.getElementById("topbar").style.display = "none";
+    document.getElementById("court").style.display = "none";
+  });
+
+  updateBindBadge();
+
+  // ---------------- Init: restore an in-progress match, then apply any
+  // Apple Watch Shortcuts action carried in the URL ----------------
+  const hadSavedMatch = restoreSavedMatch();
+  if (hadSavedMatch) applyUrlAction();
+</script>
+</body>
+</html>
